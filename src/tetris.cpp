@@ -115,7 +115,7 @@ void setup()
   // Inicializar MAX7219
   mx.begin();
   mx.clear();
-  mx.control(MD_MAX72XX::INTENSITY, 8); // Brillo medio (0-15)
+  mx.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
 
   // Configurar pulsadores con pull-up interno
   pinMode(BTN_IZQUIERDA, INPUT_PULLUP);
@@ -188,7 +188,7 @@ void setLED(int x, int y, bool encendido, bool brilloMaximo)
 // ========================================
 void animacionGameOver()
 {
-  mx.control(MD_MAX72XX::INTENSITY, 15); // Brillo medio (0-15)
+  mx.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY);
 
   // Barrida de arriba hacia abajo
   for (int y = 0; y < pixels_alto; y++)
@@ -208,16 +208,16 @@ void animacionGameOver()
   }
 
   // Mostrar brillo que se desvanece:
-  for (int b = 15; b >= 0; b--)
+  for (int b = MAX_INTENSITY; b >= 0; b--)
   {
-    mx.control(MD_MAX72XX::INTENSITY, b); // Brillo medio (0-15)
+    mx.control(MD_MAX72XX::INTENSITY, b);
     delay(50);
   }
 
   // Limpiar todo
   mx.clear();
   delay(200);
-  mx.control(MD_MAX72XX::INTENSITY, 8);
+  mx.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2); // Volver al brillo medio
 }
 
 // ========================================
