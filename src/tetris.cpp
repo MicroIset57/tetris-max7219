@@ -1,0 +1,459 @@
+/*
+  TETRIS para matriz de LEDs con MAX7219 y ESP32
+  --------------------------------------------
+  Inspirado en el Tetris original de Alexey Pajitnov (1984)
+
+  Año 2023/2024:
+  Originalmente hice este programa en P5.js (javascript / processing) simulando cada led y
+  la matriz completa de los displays.
+
+  Año 2025:
+  Adapté el código para que funcione en un ESP32 con una matriz de LEDs controlada por MAX7219,
+  esto se lo pedí a la IA Claude para convertir codigos.
+
+  Javier Rambaldo
+
+  Octubre 2025.
+
+
+
+*/
+#include <Arduino.h>
+#include "MD_MAX72xx/MD_MAX72xx.h"
+
+// ========================================
+// Configuración del Hardware MAX7219
+// ========================================
+#define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
+#define MAX_DEVICES 10
+#define CLK_PIN 18
+#define DATA_PIN 23
+#define CS_PIN 5
+
+MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+
+// ========================================
+// Configuración de Pulsadores
+// ========================================
+#define BTN_IZQUIERDA 32
+#define BTN_DERECHA 33
+#define BTN_BAJAR 25
+#define BTN_ROTAR 26
+
+// ========================================
+// Configuración del Juego
+// ========================================
+const int pixels_ancho = 14;
+const int pixels_alto = 25;
+
+int X = 5, Y = -1;
+int rotacion = 0;
+unsigned long tiempo = 0;
+int tetriminoIndex = 0;
+bool acomodalo = false;
+int puntaje = 0;
+
+uint8_t mapa[25][14]; // [alto][ancho]
+
+// ========================================
+// TETRIMINOS (4 rotaciones cada uno)
+// ========================================
+const uint16_t tetriminos[7][4] = {
+    {0b0000011000110000, 0b0010011001000000, 0b0000110001100000, 0b0000001001100100}, // O
+    {0b0000001101100000, 0b0100011000100000, 0b0000011011000000, 0b0000010001100010}, // S
+    {0b0100010001000100, 0b0000000011110000, 0b0010001000100010, 0b0000111100000000}, // I
+    {0b0000011100100000, 0b0100011001000000, 0b0000010011100000, 0b0000001001100010}, // T
+    {0b0000011101000000, 0b0100010001100000, 0b0000001011100000, 0b0000011000100010}, // L
+    {0b0000011100010000, 0b0110010001000000, 0b0000100011100000, 0b0000001000100110}, // J
+    {0b0000011001100000, 0b0000011001100000, 0b0000011001100000, 0b0000011001100000}  // Z
+};
+
+// ========================================
+// Funciones de Control de Pulsadores
+// ========================================
+bool btnPressed(int pin)
+{
+  static unsigned long lastPress[4] = {0};
+  static int pins[4] = {BTN_IZQUIERDA, BTN_DERECHA, BTN_BAJAR, BTN_ROTAR};
+
+  int idx = 0;
+  for (int i = 0; i < 4; i++)
+  {
+    if (pins[i] == pin)
+    {
+      idx = i;
+      break;
+    }
+  }
+
+  if (digitalRead(pin) == LOW && (millis() - lastPress[idx] > 150))
+  {
+    lastPress[idx] = millis();
+    return true;
+  }
+  return false;
+}
+
+// ========================================
+// Inicialización
+// ========================================
+void iniciarMapa()
+{
+  for (int y = 0; y < pixels_alto; y++)
+  {
+    for (int x = 0; x < pixels_ancho; x++)
+    {
+      mapa[y][x] = 0;
+    }
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  // Inicializar MAX7219
+  mx.begin();
+  mx.clear();
+  mx.control(MD_MAX72XX::INTENSITY, 8); // Brillo medio (0-15)
+
+  // Configurar pulsadores con pull-up interno
+  pinMode(BTN_IZQUIERDA, INPUT_PULLUP);
+  pinMode(BTN_DERECHA, INPUT_PULLUP);
+  pinMode(BTN_BAJAR, INPUT_PULLUP);
+  pinMode(BTN_ROTAR, INPUT_PULLUP);
+
+  // Inicializar juego
+  iniciarMapa();
+  randomSeed(analogRead(0));
+  rotacion = random(0, 4);
+  tetriminoIndex = random(0, 7);
+
+  Serial.println("Tetris iniciado!");
+}
+
+// ========================================
+// Función para encender/apagar LED
+// Matriz: 14 columnas x 25 filas
+// 10 displays de 5x7 LEDs cada uno
+// Distribución VERTICAL: 5 filas de 2 displays
+// ========================================
+void setLED(int x, int y, bool encendido, bool brilloMaximo)
+{
+  if (x < 0 || x >= pixels_ancho || y < 0 || y >= pixels_alto)
+    return;
+
+  // Cada display tiene 7 columnas y 5 filas
+  // Los displays están apilados verticalmente en grupos de 2:
+  // Display 0-1: filas 0-4 del juego (14 cols x 5 filas)
+  // Display 2-3: filas 5-9 del juego (14 cols x 5 filas)
+  // Display 4-5: filas 10-14 del juego (14 cols x 5 filas)
+  // Display 6-7: filas 15-19 del juego (14 cols x 5 filas)
+  // Display 8-9: filas 20-24 del juego (14 cols x 5 filas)
+
+  int grupoVertical = y / 5; // Qué par de displays (0, 1, 2, 3, 4)
+  int filaEnDisplay = y % 5; // Fila dentro del display (0-4)
+
+  // Cada grupo tiene 2 displays que cubren 14 columnas (7+7)
+  int displayBase = grupoVertical * 2;
+  int displayNum;
+  int colEnDisplay;
+
+  if (x < 7)
+  {
+    // Primer display del par (columnas 0-6)
+    displayNum = displayBase;
+    colEnDisplay = x;
+  }
+  else
+  {
+    // Segundo display del par (columnas 7-13)
+    displayNum = displayBase + 1;
+    colEnDisplay = x - 7;
+  }
+
+  if (displayNum >= MAX_DEVICES)
+    return; // Protección
+
+  // Calcular columna global en la cadena de MAX7219
+  // Cada display aporta 7 columnas
+  int colGlobal = displayNum * 7 + colEnDisplay;
+
+  // mx.setPoint(fila, columna, estado)
+  mx.setPoint(filaEnDisplay, colGlobal, encendido);
+}
+
+// ========================================
+// Animación de Game Over
+// ========================================
+void animacionGameOver()
+{
+  mx.control(MD_MAX72XX::INTENSITY, 15); // Brillo medio (0-15)
+
+  // Barrida de arriba hacia abajo
+  for (int y = 0; y < pixels_alto; y++)
+  {
+    mx.clear();
+
+    // Dibujar todas las filas hasta la actual
+    for (int yy = 0; yy <= y; yy++)
+    {
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        setLED(x, yy, true, true);
+      }
+    }
+
+    delay(40); // Velocidad de la barrida (ajustable)
+  }
+
+  // Mostrar brillo que se desvanece:
+  for (int b = 15; b >= 0; b--)
+  {
+    mx.control(MD_MAX72XX::INTENSITY, b); // Brillo medio (0-15)
+    delay(50);
+  }
+
+  // Limpiar todo
+  mx.clear();
+  delay(200);
+  mx.control(MD_MAX72XX::INTENSITY, 8);
+}
+
+// ========================================
+// Dibujar el mapa de tetriminos fijados
+// ========================================
+void dibujar_mapa_de_tetriminos()
+{
+  for (int y = 0; y < pixels_alto; y++)
+  {
+    for (int x = 0; x < pixels_ancho; x++)
+    {
+      if (mapa[y][x] == 1)
+      {
+        setLED(x, y, true, false); // brillo medio
+      }
+    }
+  }
+}
+
+// ========================================
+// Dibujar el tetrimino actual
+// ========================================
+void dibujar_tetrimino()
+{
+  uint16_t tet = tetriminos[tetriminoIndex][rotacion];
+  for (int a = 0; a < 4; a++)
+  {
+    for (int b = 0; b < 4; b++)
+    {
+      if (tet & 1)
+      {
+        setLED(X + b, Y + a, true, true); // brillo máximo
+      }
+      tet >>= 1;
+    }
+  }
+}
+
+// ========================================
+// Detectar colisión
+// ========================================
+bool detectarColision(int nuevoX, int nuevoY, int nuevaRot)
+{
+  uint16_t tet = tetriminos[tetriminoIndex][nuevaRot];
+  for (int a = 0; a < 4; a++)
+  {
+    for (int b = 0; b < 4; b++)
+    {
+      if (tet & 1)
+      {
+        int xx = nuevoX + b;
+        int yy = nuevoY + a;
+        if (xx < 0 || xx >= pixels_ancho || yy >= pixels_alto)
+          return true;
+        if (yy >= 0 && mapa[yy][xx])
+          return true;
+      }
+      tet >>= 1;
+    }
+  }
+  return false;
+}
+
+// ========================================
+// Limpiar líneas completas
+// ========================================
+void limpiarLineasCompletas()
+{
+  int lineasEliminadas = 0;
+
+  for (int y = pixels_alto - 1; y >= 0; y--)
+  {
+    bool completa = true;
+    for (int x = 0; x < pixels_ancho; x++)
+    {
+      if (mapa[y][x] == 0)
+      {
+        completa = false;
+        break;
+      }
+    }
+
+    if (completa)
+    {
+      // Mover todas las filas hacia abajo
+      for (int yy = y; yy > 0; yy--)
+      {
+        for (int x = 0; x < pixels_ancho; x++)
+        {
+          mapa[yy][x] = mapa[yy - 1][x];
+        }
+      }
+      // Limpiar la fila superior
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        mapa[0][x] = 0;
+      }
+      y++; // Revisar la misma fila nuevamente
+      lineasEliminadas++;
+    }
+  }
+
+  if (lineasEliminadas > 0)
+  {
+    puntaje += lineasEliminadas * 100;
+    Serial.print("Líneas eliminadas: ");
+    Serial.print(lineasEliminadas);
+    Serial.print(" | Puntaje: ");
+    Serial.println(puntaje);
+  }
+}
+
+// ========================================
+// Fijar tetrimino al mapa
+// ========================================
+void fijarTetrimino()
+{
+  uint16_t tet = tetriminos[tetriminoIndex][rotacion];
+  for (int a = 0; a < 4; a++)
+  {
+    for (int b = 0; b < 4; b++)
+    {
+      if (tet & 1)
+      {
+        int xx = X + b;
+        int yy = Y + a;
+        if (yy >= 0 && yy < pixels_alto && xx >= 0 && xx < pixels_ancho)
+        {
+          mapa[yy][xx] = 1;
+        }
+      }
+      tet >>= 1;
+    }
+  }
+  limpiarLineasCompletas();
+}
+
+// ========================================
+// Crear nuevo tetrimino
+// ========================================
+void nuevoTetrimino()
+{
+  Y = -1;
+  X = 5;
+  rotacion = 0;
+  tetriminoIndex = random(0, 7);
+
+  if (detectarColision(X, Y, rotacion))
+  {
+    Serial.println("GAME OVER!");
+    Serial.print("Puntaje final: ");
+    Serial.println(puntaje);
+
+    // Ejecutar animación de Game Over
+    animacionGameOver();
+
+    // Reiniciar juego
+    iniciarMapa();
+    puntaje = 0;
+    delay(1000);
+  }
+}
+
+// ========================================
+// Velocidad según puntaje
+// ========================================
+int velocidadPorPuntaje(int p)
+{
+  if (p < 100)
+    return 500;
+  if (p < 1000)
+    return 400;
+  if (p < 5000)
+    return 300;
+  if (p < 10000)
+    return 200;
+  if (p < 15000)
+    return 100;
+  if (p < 20000)
+    return 50;
+  return 50;
+}
+
+// ========================================
+// Loop Principal
+// ========================================
+void loop()
+{
+  // Limpiar pantalla
+  mx.clear();
+
+  // Dibujar mapa y tetrimino actual
+  dibujar_mapa_de_tetriminos();
+  dibujar_tetrimino();
+
+  // Actualizar pantalla (esto ya se hace automáticamente con mx.setPoint)
+
+  // Velocidad de caída
+  int vel = acomodalo ? 30 : velocidadPorPuntaje(puntaje);
+
+  if (millis() > tiempo + vel)
+  {
+    tiempo = millis();
+    if (!detectarColision(X, Y + 1, rotacion))
+    {
+      Y++;
+    }
+    else
+    {
+      fijarTetrimino();
+      nuevoTetrimino();
+      acomodalo = false;
+    }
+  }
+
+  // Controles con pulsadores
+  if (btnPressed(BTN_IZQUIERDA) && !detectarColision(X - 1, Y, rotacion))
+  {
+    X--;
+  }
+  if (btnPressed(BTN_DERECHA) && !detectarColision(X + 1, Y, rotacion))
+  {
+    X++;
+  }
+  if (btnPressed(BTN_BAJAR))
+  {
+    acomodalo = true;
+  }
+  if (btnPressed(BTN_ROTAR))
+  {
+    int r = (rotacion + 1) % 4;
+    if (!detectarColision(X, Y, r))
+    {
+      rotacion = r;
+    }
+  }
+
+  delay(10); // Pequeño delay para estabilidad
+}
