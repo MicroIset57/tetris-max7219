@@ -14,10 +14,8 @@
   Javier Rambaldo
 
   Octubre 2025.
-
-
-
 */
+
 #include <Arduino.h>
 #include "MD_MAX72xx/MD_MAX72xx.h"
 
@@ -46,7 +44,7 @@ MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 const int pixels_ancho = 14;
 const int pixels_alto = 25;
 
-int X = 5, Y = -1;
+int X = 8, Y = -1;
 int rotacion = 0;
 unsigned long tiempo = 0;
 int tetriminoIndex = 0;
@@ -54,6 +52,10 @@ bool acomodalo = false;
 int puntaje = 0;
 
 uint8_t mapa[25][14]; // [alto][ancho]
+
+// forward declaration
+bool detectarColision(int nuevoX, int nuevoY, int nuevaRotacion);
+void nuevoTetrimino();
 
 // ========================================
 // TETRIMINOS (4 rotaciones cada uno)
@@ -126,67 +128,126 @@ void setup()
   // Inicializar juego
   iniciarMapa();
   randomSeed(analogRead(0));
-  rotacion = random(0, 4);
-  tetriminoIndex = random(0, 7);
+  nuevoTetrimino();
 
   Serial.println("Tetris iniciado!");
 }
 
 // ========================================
 // Función para encender/apagar LED
-// Matriz: 14 columnas x 25 filas
-// 10 displays de 5x7 LEDs cada uno
-// Distribución VERTICAL: 5 filas de 2 displays
+// HARDWARE ESPECÍFICO:
+// - Columnas conectadas: 1-7 (col 0 no conectada)
+// - Filas conectadas: 0-4 (filas 5-7 no usadas)
 // ========================================
-void setLED(int x, int y, bool encendido, bool brilloMaximo)
+void setLED(int x, int y, bool encendido)
 {
   if (x < 0 || x >= pixels_ancho || y < 0 || y >= pixels_alto)
     return;
 
-  // Cada display tiene 7 columnas y 5 filas
-  // Los displays están apilados verticalmente en grupos de 2:
-  // Display 0-1: filas 0-4 del juego (14 cols x 5 filas)
-  // Display 2-3: filas 5-9 del juego (14 cols x 5 filas)
-  // Display 4-5: filas 10-14 del juego (14 cols x 5 filas)
-  // Display 6-7: filas 15-19 del juego (14 cols x 5 filas)
-  // Display 8-9: filas 20-24 del juego (14 cols x 5 filas)
+  // Invertir Y: y=0 debe aparecer abajo (fila física 24)
+  int yInvertido = (pixels_alto - 1) - y;
 
-  int grupoVertical = y / 5; // Qué par de displays (0, 1, 2, 3, 4)
-  int filaEnDisplay = y % 5; // Fila dentro del display (0-4)
+  int grupoVertical = yInvertido / 5; // Grupo de displays (0-4)
+  int filaEnDisplay = yInvertido % 5; // Fila dentro del display (0-4)
 
-  // Cada grupo tiene 2 displays que cubren 14 columnas (7+7)
-  int displayBase = grupoVertical * 2;
   int displayNum;
   int colEnDisplay;
 
   if (x < 7)
   {
-    // Primer display del par (columnas 0-6)
-    displayNum = displayBase;
-    colEnDisplay = x;
+    // Columna izquierda: displays 0-4
+    displayNum = grupoVertical;
+    // Invertir: x=0 → col 7, x=1 → col 6, ..., x=6 → col 1
+    colEnDisplay = 7 - x;
   }
   else
   {
-    // Segundo display del par (columnas 7-13)
-    displayNum = displayBase + 1;
-    colEnDisplay = x - 7;
+    // Columna derecha: displays 5-9
+    displayNum = 5 + grupoVertical;
+    // Invertir: x=7 → col 7, x=8 → col 6, ..., x=13 → col 1
+    colEnDisplay = 7 - (x - 7);
   }
 
   if (displayNum >= MAX_DEVICES)
-    return; // Protección
+    return;
 
-  // Calcular columna global en la cadena de MAX7219
-  // Cada display aporta 7 columnas
-  int colGlobal = displayNum * 7 + colEnDisplay;
+  // Cada display ocupa 8 columnas virtuales
+  int colGlobal = displayNum * 8 + colEnDisplay;
 
-  // mx.setPoint(fila, columna, estado)
+  // mx.setPoint(fila 0-4, columna 1-7, estado)
   mx.setPoint(filaEnDisplay, colGlobal, encendido);
 }
 
 // ========================================
 // Animación de Game Over
+// 3 barras horizontales bajando y borrando
+// NOTA: Las coordenadas Y están invertidas (y=0 abajo, y=24 arriba)
 // ========================================
 void animacionGameOver()
+{
+  int separacion = 6; // Separación entre barras
+  int velocidad = 35; // Velocidad de bajada (ms)
+
+  // Las barras bajan desde arriba (y=24) hasta abajo (y=0)
+  for (int paso = 0; paso < pixels_alto + separacion * 2; paso++)
+  {
+    mx.clear();
+
+    // Calcular posición de las 3 barras (empiezan desde arriba y=24)
+    int barra1Y = 24 - paso;
+    int barra2Y = 24 - paso + separacion;
+    int barra3Y = 24 - paso + separacion * 2;
+
+    // Dibujar el mapa actual (lo que va quedando sin borrar)
+    for (int y = 0; y < pixels_alto; y++)
+    {
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        // Solo mostrar si no ha sido "borrado" por las barras
+        // Las barras borran todo lo que está arriba de ellas (y > barraY)
+        bool borrado = (y < barra1Y) || (y < barra2Y) || (y < barra3Y);
+
+        if (!borrado && mapa[y][x])
+        {
+          setLED(x, y, true);
+        }
+      }
+    }
+
+    // Dibujar las 3 barras brillantes
+    if (barra1Y >= 0 && barra1Y < pixels_alto)
+    {
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        setLED(x, barra1Y, true);
+      }
+    }
+
+    if (barra2Y >= 0 && barra2Y < pixels_alto)
+    {
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        setLED(x, barra2Y, true);
+      }
+    }
+
+    if (barra3Y >= 0 && barra3Y < pixels_alto)
+    {
+      for (int x = 0; x < pixels_ancho; x++)
+      {
+        setLED(x, barra3Y, true);
+      }
+    }
+
+    delay(velocidad);
+  }
+
+  // Pantalla completamente borrada
+  mx.clear();
+  delay(300);
+}
+
+void animacionGameOver1()
 {
   mx.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY);
 
@@ -200,7 +261,7 @@ void animacionGameOver()
     {
       for (int x = 0; x < pixels_ancho; x++)
       {
-        setLED(x, yy, true, true);
+        setLED(x, yy, true);
       }
     }
 
@@ -231,7 +292,7 @@ void dibujar_mapa_de_tetriminos()
     {
       if (mapa[y][x] == 1)
       {
-        setLED(x, y, true, false); // brillo medio
+        setLED(x, y, true);
       }
     }
   }
@@ -249,7 +310,7 @@ void dibujar_tetrimino()
     {
       if (tet & 1)
       {
-        setLED(X + b, Y + a, true, true); // brillo máximo
+        setLED(X + b, Y + a, true);
       }
       tet >>= 1;
     }
@@ -360,10 +421,10 @@ void fijarTetrimino()
 // ========================================
 void nuevoTetrimino()
 {
+  rotacion = random(0, 4);       // comienza al azar el giro
+  tetriminoIndex = random(0, 7); // cualquier tetrimino al azar
+  X = random(7, 9);              // al azar mas o menos al centro del tablero
   Y = -1;
-  X = 5;
-  rotacion = 0;
-  tetriminoIndex = random(0, 7);
 
   if (detectarColision(X, Y, rotacion))
   {
@@ -412,8 +473,6 @@ void loop()
   // Dibujar mapa y tetrimino actual
   dibujar_mapa_de_tetriminos();
   dibujar_tetrimino();
-
-  // Actualizar pantalla (esto ya se hace automáticamente con mx.setPoint)
 
   // Velocidad de caída
   int vel = acomodalo ? 30 : velocidadPorPuntaje(puntaje);
