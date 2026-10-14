@@ -11,11 +11,11 @@
    Cada display MAX7219:
   ┌─────────────────────┐
   │    7 6 5 4 3 2 1 0  │  ← Columnas 7 a 1 (0 no conectada!)
-  │  0 ● ● ● ● ● ● ● x  │  ← Fila 0
-  │  1 ● ● ● ● ● ● ● x  │  ← Fila 1
-  │  2 ● ● ● ● ● ● ● x  │  ← Fila 2
-  │  3 ● ● ● ● ● ● ● x  │  ← Fila 3
   │  4 ● ● ● ● ● ● ● x  │  ← Fila 4
+  │  3 ● ● ● ● ● ● ● x  │  ← Fila 3
+  │  2 ● ● ● ● ● ● ● x  │  ← Fila 2
+  │  1 ● ● ● ● ● ● ● x  │  ← Fila 1
+  │  0 ● ● ● ● ● ● ● x  │  ← Fila 0
   └─────────────────────┘
 
   Disposición física de cada display:
@@ -49,7 +49,7 @@
 #define MAX_DEVICES 10
 #define CLK_PIN 18
 #define DATA_PIN 23
-#define CS_PIN 5
+#define CS_PIN 27
 
 // Dimensiones de la matriz lógica
 #define MATRIZ_ANCHO 14 // 14
@@ -95,6 +95,9 @@ public:
   // copia el contenido del buffer logico al display.
   void render(bool invertY = false)
   {
+    // Sin actualizacion automatica: se arma todo en memoria y se envia
+    // de una sola vez al final (si no, cada LED es un envio SPI y parpadea).
+    mx.control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
     mx.clear();
     for (int y = 0; y < MATRIZ_ALTO; y++)
     {
@@ -104,36 +107,48 @@ public:
           setLED(x, invertY ? MATRIZ_ALTO - y - 1 : y, true);
       }
     }
+    mx.control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON); // envia el buffer
+  }
+
+  // true si (x,y) esta dentro de la matriz.
+  // Con uint8_t los negativos dan valores grandes, asi que tambien quedan afuera.
+  static inline bool dentro(uint8_t x, uint8_t y)
+  {
+    return x < MATRIZ_ANCHO && y < MATRIZ_ALTO;
   }
 
   // verifica el buffer logico en las coordenadas (x,y)
   inline bool isSet(uint8_t x, uint8_t y)
   {
-    return mapa[y][x];
+    return dentro(x, y) && mapa[y][x];
   }
 
   // dibuja un punto (on o off) en el buffer logico en las coordenadas (x,y)
   void plot(uint8_t x, uint8_t y, bool value)
   {
-    mapa[y][x] = value;
+    if (dentro(x, y))
+      mapa[y][x] = value;
   }
 
   // pone a 1 el buffer logico en las coordenadas (x,y)
   void set(uint8_t x, uint8_t y)
   {
-    mapa[y][x] = 1;
+    if (dentro(x, y))
+      mapa[y][x] = 1;
   }
 
   // pone a 0 el buffer logico en las coordenadas (x,y)
   void clear(uint8_t x, uint8_t y)
   {
-    mapa[y][x] = 0;
+    if (dentro(x, y))
+      mapa[y][x] = 0;
   }
 
   // copia el valor del buffer logico de (x2,y2) a (x1,y1)
   void copy(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
   {
-    mapa[y1][x1] = mapa[y2][x2];
+    if (dentro(x1, y1) && dentro(x2, y2))
+      mapa[y1][x1] = mapa[y2][x2];
   }
 
   // Establecer brillo global (0-15)

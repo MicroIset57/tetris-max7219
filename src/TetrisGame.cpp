@@ -54,7 +54,7 @@ void setupTetris()
 {
     // Inicializar juego
     matrix.clearBuffer();
-    randomSeed(analogRead(0));
+    randomSeed(esp_random());
     nuevoTetrimino();
     Serial.println("Tetris iniciado!");
 }

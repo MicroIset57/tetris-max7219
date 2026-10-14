@@ -28,7 +28,7 @@ pio run -e esp32-tetris -t upload -t monitor   # Upload and monitor
 
 - **10 MAX7219 displays** in cascade (PAROLA_HW type)
 - **Physical matrix**: 14 columns x 25 rows
-- **SPI Pins**: CLK=18, DATA=23, CS=5
+- **SPI Pins**: CLK=18, DATA=23, CS=27
 - **Coordinate system**: (0,0) is bottom-left
 
 ### Display Layout
