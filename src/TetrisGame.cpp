@@ -47,11 +47,79 @@ const uint16_t tetriminos[7][4] = {
     {0b0000011001100000, 0b0000011001100000, 0b0000011001100000, 0b0000011001100000}  // Z
 };
 
+
+// ========================================
+// Presentacion: "TETRIS" sube desde abajo letra por letra,
+// cada una 2 filas por detras de la anterior, hasta que toda
+// la tira desaparece arriba.
+// Fuente 5x7: cada byte de una letra es una columna, bit0 = fila
+// superior de la letra, bit6 = fila inferior.
+// ========================================
+
+// bits (uno por columna, 5 en total) de la fila `fila` de una letra
+// almacenada por columnas.
+uint8_t filaDeLetra(const uint8_t letra[5], int fila)
+{
+    uint8_t bits = 0;
+    for (int col = 0; col < 5; col++)
+        if (letra[col] & (1 << fila))
+            bits |= (1 << col);
+    return bits;
+}
+
+void mostrarPresentacionTetris()
+{
+    const uint8_t letraT[5] = {0x01, 0x01, 0x7F, 0x01, 0x01};
+    const uint8_t letraE[5] = {0x7F, 0x49, 0x49, 0x49, 0x41};
+    const uint8_t letraR[5] = {0x7F, 0x09, 0x19, 0x29, 0x46};
+    const uint8_t letraI[5] = {0x41, 0x41, 0x7F, 0x41, 0x41};
+    const uint8_t letraS[5] = {0x46, 0x49, 0x49, 0x49, 0x31};
+
+    const uint8_t *palabra[] = {letraT, letraE, letraT, letraR, letraI, letraS}; // TETRIS
+    const int numLetras = 6;
+    const int altoLetra = 7;
+    const int espacio = 2;                    // filas de separacion entre letras
+    const int periodo = altoLetra + espacio;  // filas que ocupa cada letra + su espacio
+    const int totalFilas = numLetras * periodo;
+
+    const int startX = (MATRIZ_ANCHO - 5) / 2; // centrada horizontalmente
+
+    // topY = en que fila (buffer) esta la fila 0 de la tira completa.
+    // arranca bien abajo (invisible) y sube hasta que hasta la ultima
+    // letra (S) termina de desaparecer arriba.
+    for (int topY = -1; topY <= MATRIZ_ALTO + totalFilas; topY++)
+    {
+        matrix.clearBuffer();
+        for (int g = 0; g < totalFilas; g++)
+        {
+            int y = topY - g;
+            if (y < 0 || y >= MATRIZ_ALTO)
+                continue;
+
+            int dentroDelBloque = g % periodo;
+            if (dentroDelBloque >= altoLetra)
+                continue; // cae en el espacio entre letras
+
+            int letraIdx = g / periodo;
+            uint8_t bits = filaDeLetra(palabra[letraIdx], dentroDelBloque);
+            for (int col = 0; col < 5; col++)
+                if (bits & (1 << col))
+                    matrix.set(startX + col, y);
+        }
+        matrix.render();
+        delay(45);
+    }
+
+    matrix.clearBuffer();
+}
+
 // ========================================
 // Setup
 // ========================================
 void setupTetris()
 {
+    mostrarPresentacionTetris();
+
     // Inicializar juego
     matrix.clearBuffer();
     randomSeed(esp_random());
@@ -110,23 +178,6 @@ void animacionGameOver()
 }
 
 // ========================================
-// Dibujar el mapa
-// ========================================
-// void dibujar_mapa_de_tetriminos()
-// {
-//     // el display tiene el 0,0 en bottom,left.
-//     // por eso doy vuelta el mapa enn el display.
-//     for (int y = 0; y < MATRIZ_ALTO; y++)
-//     {
-//         for (int x = 0; x < MATRIZ_ANCHO; x++)
-//         {
-//             if (matrix.isSet(x, y))                      // esta seteado en el mapa?
-//                 matrix.setLED(x, MATRIZ_ALTO - y, true); // lo copio al display pero al reves.
-//         }
-//     }
-// }
-
-// ========================================
 // Dibujar tetrimino actual
 // ========================================
 void dibujar_tetrimino()
@@ -136,12 +187,24 @@ void dibujar_tetrimino()
     {
         for (int b = 0; b < 4; b++)
         {
-            matrix.plot(X + b, MATRIZ_ALTO - Y + a, (tet & 1));
-            // if (tet & 1)
-            // {
-            // copio al display pero al reves en Y
-            // matrix.setLED(X + b, MATRIZ_ALTO - Y + a, true);
-            // }
+            if (tet & 1)
+                matrix.plot(X + b, MATRIZ_ALTO - 1 - (Y + a), true);
+            tet >>= 1;
+        }
+    }
+}
+
+// borra del buffer lo que dibujo dibujar_tetrimino(), para no pisar
+// los bloques ya fijados que viven en el mismo buffer.
+void borrar_tetrimino()
+{
+    uint16_t tet = tetriminos[tetriminoIndex][rotacion];
+    for (int a = 0; a < 4; a++)
+    {
+        for (int b = 0; b < 4; b++)
+        {
+            if (tet & 1)
+                matrix.plot(X + b, MATRIZ_ALTO - 1 - (Y + a), false);
             tet >>= 1;
         }
     }
@@ -163,8 +226,8 @@ bool detectarColision(int nuevoX, int nuevoY, int nuevaRot)
                 int yy = nuevoY + a;
                 if (xx < 0 || xx >= MATRIZ_ANCHO || yy >= MATRIZ_ALTO)
                     return true;
-                // if (yy >= 0 && matrix.isSet(xx, yy))
-                //     return true;
+                if (yy >= 0 && matrix.isSet(xx, MATRIZ_ALTO - 1 - yy))
+                    return true;
             }
             tet >>= 1;
         }
@@ -188,7 +251,7 @@ void fijarTetrimino()
                 int yy = Y + a;
                 if (yy >= 0 && yy < MATRIZ_ALTO && xx >= 0 && xx < MATRIZ_ANCHO)
                 {
-                    matrix.set(xx, yy);
+                    matrix.set(xx, MATRIZ_ALTO - 1 - yy);
                 }
             }
             tet >>= 1;
@@ -204,7 +267,7 @@ void limpiarLineasCompletas()
 {
     int lineasEliminadas = 0;
 
-    for (int y = MATRIZ_ALTO - 1; y >= 0; y--)
+    for (int y = 0; y < MATRIZ_ALTO; y++)
     {
         bool completa = true;
         for (int x = 0; x < MATRIZ_ANCHO; x++)
@@ -218,18 +281,19 @@ void limpiarLineasCompletas()
 
         if (completa)
         {
-            for (int yy = y; yy > 0; yy--)
+            // bajo las filas de arriba (mas cerca de y=24) para tapar el hueco
+            for (int yy = y; yy < MATRIZ_ALTO - 1; yy++)
             {
                 for (int x = 0; x < MATRIZ_ANCHO; x++)
                 {
-                    matrix.copy(x, yy, x, yy - 1);
+                    matrix.copy(x, yy, x, yy + 1);
                 }
             }
             for (int x = 0; x < MATRIZ_ANCHO; x++)
             {
-                matrix.clear(x, 0);
+                matrix.clear(x, MATRIZ_ALTO - 1);
             }
-            y++;
+            y--; // reviso de nuevo esta fila, ahora tiene lo que bajo de arriba
             lineasEliminadas++;
         }
     }
@@ -296,16 +360,31 @@ void loopTetris(bool abort)
     if (abort)
         return;
 
-    // limpio el buffer interno para dibujar el frame nuevo:
-    // matrix.clear();
-    matrix.clearBuffer();
-
-    // dibujar_mapa_de_tetriminos();
-    dibujar_tetrimino();
+    // Controles
+    if (btnPressed(BTN_IZQUIERDA) && !detectarColision(X - 1, Y, rotacion))
+    {
+        X--;
+    }
+    if (btnPressed(BTN_DERECHA) && !detectarColision(X + 1, Y, rotacion))
+    {
+        X++;
+    }
+    if (btnPressed(BTN_BAJAR))
+    {
+        acomodalo = true;
+    }
+    if (btnPressed(BTN_ROTAR))
+    {
+        int r = (rotacion + 1) % 4;
+        if (!detectarColision(X, Y, r))
+        {
+            rotacion = r;
+        }
+    }
 
     int vel = acomodalo ? 30 : velocidadPorPuntaje(puntaje);
 
-    /*if (millis() > tiempo + vel)
+    if (millis() > tiempo + vel)
     {
         tiempo = millis();
         if (!detectarColision(X, Y + 1, rotacion))
@@ -314,34 +393,17 @@ void loopTetris(bool abort)
         }
         else
         {
-            // fijarTetrimino();
+            fijarTetrimino();
             nuevoTetrimino();
             acomodalo = false;
         }
-    }*/
+    }
 
-    // Controles
-    // if (btnPressed(BTN_IZQUIERDA) && !detectarColision(X - 1, Y, rotacion))
-    // {
-    //     X--;
-    // }
-    // if (btnPressed(BTN_DERECHA) && !detectarColision(X + 1, Y, rotacion))
-    // {
-    //     X++;
-    // }
-    // if (btnPressed(BTN_BAJAR))
-    // {
-    //     acomodalo = true;
-    // }
-    // if (btnPressed(BTN_ROTAR))
-    // {
-    //     int r = (rotacion + 1) % 4;
-    //     if (!detectarColision(X, Y, r))
-    //     {
-    //         rotacion = r;
-    //     }
-    // }
-
+    // dibujo la pieza encima de la pila (que vive en el mismo buffer),
+    // renderizo, y la borro para que el buffer quede con solo la pila.
+    dibujar_tetrimino();
     matrix.render();
+    borrar_tetrimino();
+
     delay(10);
 }

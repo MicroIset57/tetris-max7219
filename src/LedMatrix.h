@@ -71,7 +71,7 @@ public:
   {
     mx.begin();
     mx.clear();
-    mx.control(MD_MAX72XX::INTENSITY, 8); // Brillo medio (0-15)
+    mx.control(MD_MAX72XX::INTENSITY, 3); // Brillo medio (0-15)
   }
 
   // Limpiar toda la matriz
