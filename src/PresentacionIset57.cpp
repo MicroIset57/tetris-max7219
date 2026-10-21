@@ -16,6 +16,7 @@ static const uint8_t presentacion[] = {
     0x00,    0x00,    0x00,    0x00,                   // espacio
     0x4F,    0x49,    0x49,    0x49,    0x31,    0x00, // 5
     0x01,    0x01,    0x79,    0x05,    0x03,    0x00, // 7
+    0x00,    0x00,    0x00,    0x00,                   // espacio
 };
 static const int PRESENTACION_LEN = sizeof(presentacion) / sizeof(presentacion[0]);
 // clang-format on
