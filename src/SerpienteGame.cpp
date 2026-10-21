@@ -15,6 +15,8 @@
 #include "LedMatrix.h"
 #include "Controles.h"
 #include "GameOverClasico.h"
+#include "Fuente5x7.h"
+#include "PresentacionPalabra.h"
 
 // ========================================
 // Variables del juego
@@ -120,10 +122,24 @@ static void dibujarSerpiente()
 }
 
 // ========================================
+// Presentacion: "VIVORA" sube desde abajo letra por letra (ver
+// PresentacionPalabra.h).
+// ========================================
+static void mostrarPresentacionSerpiente()
+{
+    static const uint8_t letras[][5] = {
+        {LETRA_V}, {LETRA_I}, {LETRA_V}, {LETRA_O}, {LETRA_R}, {LETRA_A},
+    };
+    mostrarPalabraSubiendo(letras, 6);
+}
+
+// ========================================
 // Setup
 // ========================================
 void setupSerpiente()
 {
+    mostrarPresentacionSerpiente();
+
     matrix.clearBuffer();
     randomSeed(esp_random());
 

@@ -19,6 +19,8 @@
 #include "LedMatrix.h"
 #include "Controles.h"
 #include "GameOverClasico.h"
+#include "Fuente5x7.h"
+#include "PresentacionPalabra.h"
 
 // ========================================
 // Variables del Juego
@@ -52,68 +54,15 @@ static const uint16_t tetriminos[7][4] = {
 
 
 // ========================================
-// Presentacion: "TETRIS" sube desde abajo letra por letra,
-// cada una 2 filas por detras de la anterior, hasta que toda
-// la tira desaparece arriba.
-// Fuente 5x7: cada byte de una letra es una columna, bit0 = fila
-// superior de la letra, bit6 = fila inferior.
+// Presentacion: "TETRIS" sube desde abajo letra por letra (ver
+// PresentacionPalabra.h).
 // ========================================
-
-// bits (uno por columna, 5 en total) de la fila `fila` de una letra
-// almacenada por columnas.
-static uint8_t filaDeLetra(const uint8_t letra[5], int fila)
-{
-    uint8_t bits = 0;
-    for (int col = 0; col < 5; col++)
-        if (letra[col] & (1 << fila))
-            bits |= (1 << col);
-    return bits;
-}
-
 static void mostrarPresentacionTetris()
 {
-    const uint8_t letraT[5] = {0x01, 0x01, 0x7F, 0x01, 0x01};
-    const uint8_t letraE[5] = {0x7F, 0x49, 0x49, 0x49, 0x41};
-    const uint8_t letraR[5] = {0x7F, 0x09, 0x19, 0x29, 0x46};
-    const uint8_t letraI[5] = {0x41, 0x41, 0x7F, 0x41, 0x41};
-    const uint8_t letraS[5] = {0x46, 0x49, 0x49, 0x49, 0x31};
-
-    const uint8_t *palabra[] = {letraT, letraE, letraT, letraR, letraI, letraS}; // TETRIS
-    const int numLetras = 6;
-    const int altoLetra = 7;
-    const int espacio = 2;                    // filas de separacion entre letras
-    const int periodo = altoLetra + espacio;  // filas que ocupa cada letra + su espacio
-    const int totalFilas = numLetras * periodo;
-
-    const int startX = (MATRIZ_ANCHO - 5) / 2; // centrada horizontalmente
-
-    // topY = en que fila (buffer) esta la fila 0 de la tira completa.
-    // arranca bien abajo (invisible) y sube hasta que hasta la ultima
-    // letra (S) termina de desaparecer arriba.
-    for (int topY = -1; topY <= MATRIZ_ALTO + totalFilas; topY++)
-    {
-        matrix.clearBuffer();
-        for (int g = 0; g < totalFilas; g++)
-        {
-            int y = topY - g;
-            if (y < 0 || y >= MATRIZ_ALTO)
-                continue;
-
-            int dentroDelBloque = g % periodo;
-            if (dentroDelBloque >= altoLetra)
-                continue; // cae en el espacio entre letras
-
-            int letraIdx = g / periodo;
-            uint8_t bits = filaDeLetra(palabra[letraIdx], dentroDelBloque);
-            for (int col = 0; col < 5; col++)
-                if (bits & (1 << col))
-                    matrix.set(startX + col, y);
-        }
-        matrix.render();
-        delay(45);
-    }
-
-    matrix.clearBuffer();
+    static const uint8_t letras[][5] = {
+        {LETRA_T}, {LETRA_E}, {LETRA_T}, {LETRA_R}, {LETRA_I}, {LETRA_S},
+    };
+    mostrarPalabraSubiendo(letras, 6);
 }
 
 // ========================================

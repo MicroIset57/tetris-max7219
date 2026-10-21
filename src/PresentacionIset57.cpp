@@ -1,22 +1,16 @@
 #include <Arduino.h>
 #include "LedMatrix.h"
+#include "Fuente5x7.h"
 
 // ========================================
-// Fuente 5x7 para la presentacion "ISET 57".
-// Cada byte es una columna del caracter (5 columnas por letra);
-// bit0 = fila superior del caracter, bit6 = fila inferior.
-// Entre caracteres va una columna en 0 para separarlos.
+// "ISET 57", con el diccionario de letras compartido (Fuente5x7.h).
 // ========================================
 // clang-format off
 static const uint8_t presentacion[] = {
-    0x41,    0x41,    0x7F,    0x41,    0x41,    0x00, // I
-    0x46,    0x49,    0x49,    0x49,    0x31,    0x00, // S
-    0x7F,    0x49,    0x49,    0x49,    0x41,    0x00, // E
-    0x01,    0x01,    0x7F,    0x01,    0x01,    0x00, // T
-    0x00,    0x00,    0x00,    0x00,                   // espacio
-    0x4F,    0x49,    0x49,    0x49,    0x31,    0x00, // 5
-    0x01,    0x01,    0x79,    0x05,    0x03,    0x00, // 7
-    0x00,    0x00,    0x00,    0x00,                   // espacio
+    LETRA_I, SEP, LETRA_S, SEP, LETRA_E, SEP, LETRA_T, SEP,
+    SEP, SEP, SEP, SEP,                   // espacio
+    LETRA_5, SEP, LETRA_7, SEP,
+    SEP, SEP, SEP, SEP,                   // espacio
 };
 static const int PRESENTACION_LEN = sizeof(presentacion) / sizeof(presentacion[0]);
 // clang-format on

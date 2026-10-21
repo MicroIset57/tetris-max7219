@@ -15,8 +15,9 @@
 
 // clang-format off
 static const uint8_t gameOverCols[] = {
-    LETRA_G, LETRA_A, LETRA_M, LETRA_E, ESPACIO,                   // GAME
-    LETRA_O, LETRA_V, LETRA_E, LETRA_R, ESPACIO, ESPACIO, ESPACIO,  // OVER
+    LETRA_G, SEP, LETRA_A, SEP, LETRA_M, SEP, LETRA_E, SEP, ESPACIO, // GAME
+    LETRA_O, SEP, LETRA_V, SEP, LETRA_E, SEP, LETRA_R, SEP,
+    ESPACIO, ESPACIO, ESPACIO, // OVER
 };
 // clang-format on
 static const int GAMEOVER_LEN = sizeof(gameOverCols) / sizeof(gameOverCols[0]);
@@ -56,8 +57,12 @@ static void mostrarGameOverClasico()
 void registrarDerrota()
 {
     derrotasSeguidas++;
+    Serial.print("Derrota registrada. Derrotas seguidas: ");
+    Serial.println(derrotasSeguidas);
+
     if (derrotasSeguidas >= 3)
     {
+        Serial.println("3 derrotas seguidas -> GAME OVER clasico, vuelve al menu");
         derrotasSeguidas = 0;
         mostrarGameOverClasico();
         pedidoDeMenu = true;

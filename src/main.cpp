@@ -49,6 +49,7 @@ void loop()
     // clasico de GAME OVER; ahora toca volver al menu a elegir de nuevo.
     if (hayPedidoDeMenu())
     {
+        Serial.println("Volviendo al menu...");
         elegirYArrancarJuego();
         return;
     }

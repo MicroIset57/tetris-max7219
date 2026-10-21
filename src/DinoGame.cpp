@@ -19,6 +19,8 @@
 #include "LedMatrix.h"
 #include "Controles.h"
 #include "GameOverClasico.h"
+#include "Fuente5x7.h"
+#include "PresentacionPalabra.h"
 
 // ========================================
 // Variables del juego
@@ -185,10 +187,24 @@ static void nuevoCactus()
 }
 
 // ========================================
+// Presentacion: "DINO" sube desde abajo letra por letra (ver
+// PresentacionPalabra.h).
+// ========================================
+static void mostrarPresentacionDino()
+{
+    static const uint8_t letras[][5] = {
+        {LETRA_D}, {LETRA_I}, {LETRA_N}, {LETRA_O},
+    };
+    mostrarPalabraSubiendo(letras, 4);
+}
+
+// ========================================
 // Setup
 // ========================================
 void setupDino()
 {
+    mostrarPresentacionDino();
+
     matrix.clearBuffer();
     randomSeed(esp_random());
 

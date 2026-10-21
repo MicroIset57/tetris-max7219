@@ -23,9 +23,11 @@ static const int ZONA_VIVORA = 66;  // + 6 letras TETRIS (6*6=36) + brecha (3)
 static const int MENU_LEN = 105;    // + 6 letras VIVORA (6*6=36) + brecha (3)
 
 static const uint8_t menuCols[MENU_LEN] = {
-    LETRA_D, LETRA_I, LETRA_N, LETRA_O, ESPACIO,                    // DINO
-    LETRA_T, LETRA_E, LETRA_T, LETRA_R, LETRA_I, LETRA_S, ESPACIO,  // TETRIS
-    LETRA_V, LETRA_I, LETRA_V, LETRA_O, LETRA_R, LETRA_A, ESPACIO,  // VIVORA
+    LETRA_D, SEP, LETRA_I, SEP, LETRA_N, SEP, LETRA_O, SEP, ESPACIO, // DINO
+    LETRA_T, SEP, LETRA_E, SEP, LETRA_T, SEP, LETRA_R, SEP,
+    LETRA_I, SEP, LETRA_S, SEP, ESPACIO, // TETRIS
+    LETRA_V, SEP, LETRA_I, SEP, LETRA_V, SEP, LETRA_O, SEP,
+    LETRA_R, SEP, LETRA_A, SEP, ESPACIO, // VIVORA
 };
 // clang-format on
 
@@ -42,6 +44,19 @@ static int juegoEnOffset(int offset)
     return JUEGO_VIVORA;
 }
 
+static const char *nombreJuego(int juego)
+{
+    switch (juego)
+    {
+    case JUEGO_TETRIS:
+        return "TETRIS";
+    case JUEGO_VIVORA:
+        return "VIVORA";
+    default:
+        return "DINO";
+    }
+}
+
 // ========================================
 // Menu: scroll infinito hasta que se presiona algun boton.
 // ========================================
@@ -49,6 +64,8 @@ int mostrarMenuJuegos()
 {
     const int filaSuperior = 18; // misma altura que usa PresentacionIset57
     int offset = 0;
+
+    Serial.println("Menu: elegi un juego (cualquier boton selecciona el titulo en pantalla)");
 
     matrix.clearBuffer();
 
@@ -68,7 +85,10 @@ int mostrarMenuJuegos()
             btnPressed(BTN_BAJAR) || btnPressed(BTN_ARRIBA))
         {
             matrix.clearBuffer();
-            return juegoEnOffset(offset);
+            int juego = juegoEnOffset(offset);
+            Serial.print("Menu: juego seleccionado: ");
+            Serial.println(nombreJuego(juego));
+            return juego;
         }
 
         offset = (offset + 1) % MENU_LEN;
