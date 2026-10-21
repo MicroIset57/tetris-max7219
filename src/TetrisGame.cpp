@@ -52,7 +52,6 @@ static const uint16_t tetriminos[7][4] = {
     {0b0000011001100000, 0b0000011001100000, 0b0000011001100000, 0b0000011001100000}  // Z
 };
 
-
 // ========================================
 // Presentacion: "TETRIS" sube desde abajo letra por letra (ver
 // PresentacionPalabra.h).
@@ -60,7 +59,12 @@ static const uint16_t tetriminos[7][4] = {
 static void mostrarPresentacionTetris()
 {
     static const uint8_t letras[][5] = {
-        {LETRA_T}, {LETRA_E}, {LETRA_T}, {LETRA_R}, {LETRA_I}, {LETRA_S},
+        {LETRA_T},
+        {LETRA_E},
+        {LETRA_T},
+        {LETRA_R},
+        {LETRA_I},
+        {LETRA_S},
     };
     mostrarPalabraSubiendo(letras, 6);
 }
@@ -68,9 +72,10 @@ static void mostrarPresentacionTetris()
 // ========================================
 // Setup
 // ========================================
-void setupTetris()
+void setupTetris(bool mostrarPresentacion)
 {
-    mostrarPresentacionTetris();
+    if (mostrarPresentacion)
+        mostrarPresentacionTetris();
 
     // Inicializar juego
     matrix.clearBuffer();
@@ -85,7 +90,7 @@ void setupTetris()
 static void animacionGameOver()
 {
     int separacion = 6;
-    int velocidad = 35;
+    int velocidad = 30;
 
     for (int paso = 0; paso < MATRIZ_ALTO + separacion * 2; paso++)
     {

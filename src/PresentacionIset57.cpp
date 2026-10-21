@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "LedMatrix.h"
+#include "EfectoOla.h"
 #include "Fuente5x7.h"
 
 // ========================================
@@ -27,6 +28,8 @@ void mostrarPresentacion(unsigned long duracionMs)
 
     while (millis() - inicio < duracionMs)
     {
+        aplicarBrilloOla(millis() - inicio);
+
         matrix.clearBuffer();
         for (int x = 0; x < MATRIZ_ANCHO; x++)
         {
@@ -39,8 +42,9 @@ void mostrarPresentacion(unsigned long duracionMs)
         }
         matrix.render();
         offset = (offset + 1) % PRESENTACION_LEN;
-        delay(60);
+        delay(50);
     }
 
+    matrix.setBrightness(BRILLO_NORMAL);
     matrix.clearBuffer();
 }

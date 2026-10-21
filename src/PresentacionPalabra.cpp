@@ -1,13 +1,15 @@
 /*
   Presentacion generica: una palabra sube letra por letra desde abajo
-  de la pantalla hasta desaparecer arriba. La usan las presentaciones
-  de Tetris, Dino y Serpiente, cada una con su propia palabra.
+  de la pantalla hasta desaparecer arriba, con un efecto de ola de
+  brillo de fondo. La usan las presentaciones de Tetris, Dino,
+  Serpiente y Arkanoid, cada una con su propia palabra.
 
   Javier Rambaldo
   Octubre 2026.
 */
 
 #include "LedMatrix.h"
+#include "EfectoOla.h"
 #include "PresentacionPalabra.h"
 
 // bits (uno por columna, 5 en total) de la fila `fila` de una letra
@@ -30,11 +32,15 @@ void mostrarPalabraSubiendo(const uint8_t letras[][5], int numLetras)
 
     const int startX = (MATRIZ_ANCHO - 5) / 2; // centrada horizontalmente
 
+    unsigned long inicio = millis();
+
     // topY = en que fila (buffer) esta la fila 0 de la tira completa.
     // arranca bien abajo (invisible) y sube hasta que hasta la ultima
     // letra termina de desaparecer arriba.
     for (int topY = -1; topY <= MATRIZ_ALTO + totalFilas; topY++)
     {
+        aplicarBrilloOla(millis() - inicio);
+
         matrix.clearBuffer();
         for (int g = 0; g < totalFilas; g++)
         {
@@ -53,8 +59,9 @@ void mostrarPalabraSubiendo(const uint8_t letras[][5], int numLetras)
                     matrix.set(startX + col, y);
         }
         matrix.render();
-        delay(45);
+        delay(30);
     }
 
+    matrix.setBrightness(BRILLO_NORMAL);
     matrix.clearBuffer();
 }

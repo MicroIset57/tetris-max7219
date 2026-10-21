@@ -2,7 +2,8 @@
   Cartel clasico de "GAME OVER".
   ------------------------------
   Se muestra cuando se pierde 3 veces seguidas (en cualquiera de los
-  juegos), y despues deja pendiente volver al menu principal.
+  juegos), y despues deja pendiente volver al menu principal. Tiene el
+  mismo efecto de ola de brillo que las presentaciones de los juegos.
 
   Javier Rambaldo
   Octubre 2026.
@@ -10,6 +11,7 @@
 
 #include <Arduino.h>
 #include "LedMatrix.h"
+#include "EfectoOla.h"
 #include "Fuente5x7.h"
 #include "GameOverClasico.h"
 
@@ -37,6 +39,8 @@ static void mostrarGameOverClasico()
 
     while (millis() - inicio < duracionMs)
     {
+        aplicarBrilloOla(millis() - inicio);
+
         matrix.clearBuffer();
         for (int x = 0; x < MATRIZ_ANCHO; x++)
         {
@@ -50,6 +54,7 @@ static void mostrarGameOverClasico()
         delay(120);
     }
 
+    matrix.setBrightness(BRILLO_NORMAL);
     matrix.clearBuffer();
     matrix.render();
 }

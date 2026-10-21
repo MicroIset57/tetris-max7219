@@ -128,7 +128,12 @@ static void dibujarSerpiente()
 static void mostrarPresentacionSerpiente()
 {
     static const uint8_t letras[][5] = {
-        {LETRA_V}, {LETRA_I}, {LETRA_V}, {LETRA_O}, {LETRA_R}, {LETRA_A},
+        {LETRA_V},
+        {LETRA_I},
+        {LETRA_V},
+        {LETRA_O},
+        {LETRA_R},
+        {LETRA_A},
     };
     mostrarPalabraSubiendo(letras, 6);
 }
@@ -136,9 +141,10 @@ static void mostrarPresentacionSerpiente()
 // ========================================
 // Setup
 // ========================================
-void setupSerpiente()
+void setupSerpiente(bool mostrarPresentacion)
 {
-    mostrarPresentacionSerpiente();
+    if (mostrarPresentacion)
+        mostrarPresentacionSerpiente();
 
     matrix.clearBuffer();
     randomSeed(esp_random());
@@ -218,7 +224,7 @@ void loopSerpiente(bool abort)
     {
         // esperamos cualquier boton para reiniciar
         if (btnPressed(BTN_IZQUIERDA) || btnPressed(BTN_DERECHA) || btnPressed(BTN_BAJAR) || btnPressed(BTN_ARRIBA))
-            setupSerpiente();
+            setupSerpiente(false);
         delay(10);
         return;
     }

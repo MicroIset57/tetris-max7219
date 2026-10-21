@@ -5,6 +5,7 @@
 #include "PresentacionIset57.h"
 #include "DinoGame.h"
 #include "SerpienteGame.h"
+#include "ArkanoidGame.h"
 #include "MenuJuegos.h"
 #include "GameOverClasico.h"
 
@@ -13,18 +14,21 @@ static int juegoActual = JUEGO_DINO;
 // muestra el menu, se queda con lo elegido y arranca ese juego.
 static void elegirYArrancarJuego()
 {
-    juegoActual = mostrarMenuJuegos(); // DINO / TETRIS / VIVORA desplazandose; un boton elige.
+    juegoActual = mostrarMenuJuegos(); // DINO / TETRIS / VIVORA / ARKANOID desplazandose; un boton elige.
 
     switch (juegoActual)
     {
     case JUEGO_TETRIS:
-        setupTetris();
+        setupTetris(true);
         break;
     case JUEGO_VIVORA:
-        setupSerpiente();
+        setupSerpiente(true);
+        break;
+    case JUEGO_ARKANOID:
+        setupArkanoid(true);
         break;
     default:
-        setupDino();
+        setupDino(true);
         break;
     }
 }
@@ -62,6 +66,9 @@ void loop()
         break;
     case JUEGO_VIVORA:
         loopSerpiente(false);
+        break;
+    case JUEGO_ARKANOID:
+        loopArkanoid(false);
         break;
     default:
         loopDino(false);

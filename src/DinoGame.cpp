@@ -193,7 +193,10 @@ static void nuevoCactus()
 static void mostrarPresentacionDino()
 {
     static const uint8_t letras[][5] = {
-        {LETRA_D}, {LETRA_I}, {LETRA_N}, {LETRA_O},
+        {LETRA_D},
+        {LETRA_I},
+        {LETRA_N},
+        {LETRA_O},
     };
     mostrarPalabraSubiendo(letras, 4);
 }
@@ -201,9 +204,10 @@ static void mostrarPresentacionDino()
 // ========================================
 // Setup
 // ========================================
-void setupDino()
+void setupDino(bool mostrarPresentacion)
 {
-    mostrarPresentacionDino();
+    if (mostrarPresentacion)
+        mostrarPresentacionDino();
 
     matrix.clearBuffer();
     randomSeed(esp_random());
@@ -258,7 +262,7 @@ void loopDino(bool abort)
     {
         // esperamos el boton para reiniciar
         if (btnPressed(BTN_SALTAR))
-            setupDino();
+            setupDino(false);
         delay(10);
         return;
     }
