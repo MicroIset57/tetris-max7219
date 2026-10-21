@@ -8,7 +8,7 @@
 // Entre caracteres va una columna en 0 para separarlos.
 // ========================================
 // clang-format off
-const uint8_t presentacion[] = {
+static const uint8_t presentacion[] = {
     0x41,    0x41,    0x7F,    0x41,    0x41,    0x00, // I
     0x46,    0x49,    0x49,    0x49,    0x31,    0x00, // S
     0x7F,    0x49,    0x49,    0x49,    0x41,    0x00, // E
@@ -17,7 +17,7 @@ const uint8_t presentacion[] = {
     0x4F,    0x49,    0x49,    0x49,    0x31,    0x00, // 5
     0x01,    0x01,    0x79,    0x05,    0x03,    0x00, // 7
 };
-const int PRESENTACION_LEN = sizeof(presentacion) / sizeof(presentacion[0]);
+static const int PRESENTACION_LEN = sizeof(presentacion) / sizeof(presentacion[0]);
 // clang-format on
 
 // ========================================
@@ -44,7 +44,7 @@ void mostrarPresentacion(unsigned long duracionMs)
         }
         matrix.render();
         offset = (offset + 1) % PRESENTACION_LEN;
-        delay(120);
+        delay(60);
     }
 
     matrix.clearBuffer();

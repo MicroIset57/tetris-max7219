@@ -4,6 +4,30 @@
 #include "TetrisGame.h"
 #include "PresentacionIset57.h"
 #include "DinoGame.h"
+#include "SerpienteGame.h"
+#include "MenuJuegos.h"
+#include "GameOverClasico.h"
+
+static int juegoActual = JUEGO_DINO;
+
+// muestra el menu, se queda con lo elegido y arranca ese juego.
+static void elegirYArrancarJuego()
+{
+    juegoActual = mostrarMenuJuegos(); // DINO / TETRIS / VIVORA desplazandose; un boton elige.
+
+    switch (juegoActual)
+    {
+    case JUEGO_TETRIS:
+        setupTetris();
+        break;
+    case JUEGO_VIVORA:
+        setupSerpiente();
+        break;
+    default:
+        setupDino();
+        break;
+    }
+}
 
 void setup()
 {
@@ -11,16 +35,35 @@ void setup()
     delay(200);
     Serial.println("*** MATRIX GAMES ISET 57 ***");
 
-    matrix.begin();             // Inicializar matriz de LEDs
-    setupControles();           // setup de los botones.
+    matrix.begin();   // Inicializar matriz de LEDs
+    setupControles(); // setup de los botones.
+
     mostrarPresentacion(10000); // ---> muestra el ISET 57
 
-    // setupTetris();              // setup del juego Tetris (display, etc).
-    setupDino();
+    elegirYArrancarJuego();
 }
 
 void loop()
 {
-    // loopTetris(false); // si pones true se aborta el juego.
-    loopDino(false);
+    // 3 derrotas seguidas (en cualquier juego) ya mostraron el cartel
+    // clasico de GAME OVER; ahora toca volver al menu a elegir de nuevo.
+    if (hayPedidoDeMenu())
+    {
+        elegirYArrancarJuego();
+        return;
+    }
+
+    switch (juegoActual)
+    {
+    case JUEGO_TETRIS:
+        // si pones true se aborta el juego. Y esta preparado para un boton de Abort!
+        loopTetris(false); 
+        break;
+    case JUEGO_VIVORA:
+        loopSerpiente(false);
+        break;
+    default:
+        loopDino(false);
+        break;
+    }
 }

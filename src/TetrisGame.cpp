@@ -18,26 +18,29 @@
 #include <Arduino.h>
 #include "LedMatrix.h"
 #include "Controles.h"
+#include "GameOverClasico.h"
 
 // ========================================
 // Variables del Juego
 // ========================================
-int X = 8, Y = -1;
-int rotacion = 0;
-unsigned long tiempo = 0;
-int tetriminoIndex = 0;
-bool acomodalo = false;
-int puntaje = 0;
+// static: son internas de este archivo, para no chocar con nombres
+// parecidos (puntaje, etc.) de los otros juegos al linkear todo junto.
+static int X = 8, Y = -1;
+static int rotacion = 0;
+static unsigned long tiempo = 0;
+static int tetriminoIndex = 0;
+static bool acomodalo = false;
+static int puntaje = 0;
 
 // Forward declarations
-bool detectarColision(int nuevoX, int nuevoY, int nuevaRotacion);
-void nuevoTetrimino();
-void limpiarLineasCompletas();
+static bool detectarColision(int nuevoX, int nuevoY, int nuevaRotacion);
+static void nuevoTetrimino();
+static void limpiarLineasCompletas();
 
 // ========================================
 // TETRIMINOS (4 rotaciones cada uno)
 // ========================================
-const uint16_t tetriminos[7][4] = {
+static const uint16_t tetriminos[7][4] = {
     {0b0000011000110000, 0b0010011001000000, 0b0000110001100000, 0b0000001001100100}, // O
     {0b0000001101100000, 0b0100011000100000, 0b0000011011000000, 0b0000010001100010}, // S
     {0b0100010001000100, 0b0000000011110000, 0b0010001000100010, 0b0000111100000000}, // I
@@ -58,7 +61,7 @@ const uint16_t tetriminos[7][4] = {
 
 // bits (uno por columna, 5 en total) de la fila `fila` de una letra
 // almacenada por columnas.
-uint8_t filaDeLetra(const uint8_t letra[5], int fila)
+static uint8_t filaDeLetra(const uint8_t letra[5], int fila)
 {
     uint8_t bits = 0;
     for (int col = 0; col < 5; col++)
@@ -67,7 +70,7 @@ uint8_t filaDeLetra(const uint8_t letra[5], int fila)
     return bits;
 }
 
-void mostrarPresentacionTetris()
+static void mostrarPresentacionTetris()
 {
     const uint8_t letraT[5] = {0x01, 0x01, 0x7F, 0x01, 0x01};
     const uint8_t letraE[5] = {0x7F, 0x49, 0x49, 0x49, 0x41};
@@ -130,7 +133,7 @@ void setupTetris()
 // ========================================
 // Animación de Game Over
 // ========================================
-void animacionGameOver()
+static void animacionGameOver()
 {
     int separacion = 6;
     int velocidad = 35;
@@ -180,7 +183,7 @@ void animacionGameOver()
 // ========================================
 // Dibujar tetrimino actual
 // ========================================
-void dibujar_tetrimino()
+static void dibujar_tetrimino()
 {
     uint16_t tet = tetriminos[tetriminoIndex][rotacion];
     for (int a = 0; a < 4; a++)
@@ -196,7 +199,7 @@ void dibujar_tetrimino()
 
 // borra del buffer lo que dibujo dibujar_tetrimino(), para no pisar
 // los bloques ya fijados que viven en el mismo buffer.
-void borrar_tetrimino()
+static void borrar_tetrimino()
 {
     uint16_t tet = tetriminos[tetriminoIndex][rotacion];
     for (int a = 0; a < 4; a++)
@@ -213,7 +216,7 @@ void borrar_tetrimino()
 // ========================================
 // Detectar colisión
 // ========================================
-bool detectarColision(int nuevoX, int nuevoY, int nuevaRot)
+static bool detectarColision(int nuevoX, int nuevoY, int nuevaRot)
 {
     uint16_t tet = tetriminos[tetriminoIndex][nuevaRot];
     for (int a = 0; a < 4; a++)
@@ -238,7 +241,7 @@ bool detectarColision(int nuevoX, int nuevoY, int nuevaRot)
 // ========================================
 // Fijar tetrimino
 // ========================================
-void fijarTetrimino()
+static void fijarTetrimino()
 {
     uint16_t tet = tetriminos[tetriminoIndex][rotacion];
     for (int a = 0; a < 4; a++)
@@ -263,7 +266,7 @@ void fijarTetrimino()
 // ========================================
 // Limpiar líneas completas
 // ========================================
-void limpiarLineasCompletas()
+static void limpiarLineasCompletas()
 {
     int lineasEliminadas = 0;
 
@@ -311,7 +314,7 @@ void limpiarLineasCompletas()
 // ========================================
 // Nuevo tetrimino
 // ========================================
-void nuevoTetrimino()
+static void nuevoTetrimino()
 {
     rotacion = random(0, 4);
     tetriminoIndex = random(0, 7);
@@ -329,13 +332,14 @@ void nuevoTetrimino()
         matrix.clearBuffer();
         puntaje = 0;
         delay(1000);
+        registrarDerrota();
     }
 }
 
 // ========================================
 // Velocidad según puntaje
 // ========================================
-int velocidadPorPuntaje(int p)
+static int velocidadPorPuntaje(int p)
 {
     if (p < 100)
         return 500;
