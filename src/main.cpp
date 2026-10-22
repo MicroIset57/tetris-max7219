@@ -8,6 +8,7 @@
 #include "ArkanoidGame.h"
 #include "MenuJuegos.h"
 #include "GameOverClasico.h"
+#include "ConwaysGame.h"
 
 static int juegoActual = JUEGO_DINO;
 
@@ -41,6 +42,8 @@ void setup()
 
     matrix.begin();   // Inicializar matriz de LEDs
     setupControles(); // setup de los botones.
+
+    jugarConway(); // ---> Juego de la Vida con semilla al azar, hasta que se pulse un boton (solo se ve recien reseteado)
 
     mostrarPresentacion(10000); // ---> muestra el ISET 57
 
